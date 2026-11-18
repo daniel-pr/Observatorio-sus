@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Observatório SIH/SUS — Análise de Internações</title>
+    <meta
+      name="description"
+      content="Dashboard estático para análise exploratória de internações hospitalares do SUS (SIH/DATASUS)."
+    />
+    <meta property="og:title" content="Observatório SIH/SUS — Análise de Internações" />
+    <meta
+      property="og:description"
+      content="Dashboard estático para análise exploratória de internações hospitalares do SUS (SIH/DATASUS)."
+    />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" defer></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body id="top">
+    <header class="topbar">
+      <div class="container topbar-inner">
+        <a href="#top" class="brand-title">Observatório SIH/SUS</a>
+
+        <nav class="topbar-nav" aria-label="Navegação principal">
+          <a href="#secao-indicadores" class="nav-link">Indicadores</a>
+          <a href="#secao-temporal" class="nav-link">Série Temporal</a>
+          <a href="#secao-epidemiologia" class="nav-link">Perfil e CID-10</a>
+          <a href="#secao-custos" class="nav-link">Custos</a>
+          <a href="#secao-doencas" class="nav-link" id="nav-doencas">Doenças (CID-10)</a>
+        </nav>
+
+        <div class="topbar-actions">
+          <button id="btn-export-csv" class="btn btn-primary" type="button" disabled>
+            Baixar CSV
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="container main-content">
+      <section class="page-intro" aria-labelledby="page-title">
+        <h1 id="page-title" class="page-title">
+          Análise exploratória de internações hospitalares no SUS
+        </h1>
+        <p id="page-meta" class="page-meta">
+          SIH/DATASUS · Carregando catálogo de dados...
+        </p>
+      </section>
+
+      <div id="banner-exemplo" class="alert alert-warning" role="status" hidden>
+        <strong>Dados de exemplo (fictícios):</strong> o arquivo <code>data/index.json</code> não foi encontrado; exibindo conjunto demonstrativo gerado localmente.
+      </div>
+
+      <div id="banner-erro" class="alert alert-error" role="alert" hidden>
+        <span id="banner-erro-texto">Não foi possível carregar os dados solicitados.</span>
+        <button id="btn-retry" class="btn btn-secondary btn-compact" type="button">
+          Tentar novamente
+        </button>
+      </div>
+
+      <section class="filter-panel" aria-label="Filtros de análise">
+        <div class="filter-grid">
+          <!-- Filtro UF (multisseleção) -->
+          <div class="filter-field">
+            <span class="filter-label" id="label-uf">UF (Estado)</span>
+            <div class="multiselect" id="ms-uf">
+              <button
+                type="button"
+                class="multiselect-trigger"
+                id="trigger-uf"
+                aria-haspopup="listbox"
+                aria-expanded="false"
+                aria-labelledby="label-uf trigger-uf"
+              >
+                <span class="multiselect-text" id="text-uf">Carregando...</span>
+                <svg class="chevron-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path
+                    fill-rule="evenodd"
+                    d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+              </button>
+              <div class="multiselect-popover" id="popover-uf" hidden>
+                <div class="popover-notice">
+                  Selecionar "Todas" baixa mais dados (um arquivo por UF).
+                </div>
+                <div class="popover-actions">
+                  <button type="button" class="link-action" id="btn-uf-todas">Todas</button>
+                  <span class="sep" aria-hidden="true">·</span>
+                  <button type="button" class="link-action" id="btn-uf-primeira">Apenas 1ª UF</button>
+                </div>
+                <div class="popover-options" id="options-uf" role="group" aria-label="Unidades Federativas"></div>
+              </div>
+            </div>
+            <p class="filter-hint">A seleção "Todas" baixa mais dados sob demanda.</p>
+          </div>
+
+          <!-- Intervalo de anos -->
+          <div class="filter-field">
+            <span class="filter-label">Intervalo de anos</span>
+            <div class="year-range">
+              <label class="sr-only" for="filter-ano-inicio">Ano inicial</label>
+              <select id="filter-ano-inicio" class="select-input" aria-label="Ano inicial"></select>
+              <span class="range-sep" aria-hidden="true">até</span>
+              <label class="sr-only" for="filter-ano-fim">Ano final</label>
+              <select id="filter-ano-fim" class="select-input" aria-label="Ano final"></select>
+            </div>
+          </div>
+
+          <!-- Capítulo da CID-10 (multisseleção) -->
+          <div class="filter-field">
+            <span class="filter-label" id="label-cid">Capítulo da CID-10</span>
+            <div class="multiselect" id="ms-cid">
+              <button
+                type="button"
+                class="multiselect-trigger"
+                id="trigger-cid"
+                aria-haspopup="listbox"
+                aria-expanded="false"
+                aria-labelledby="label-cid trigger-cid"
+              >
+                <span class="multiselect-text" id="text-cid">Todos os capítulos</span>
+                <svg class="chevron-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path
+                    fill-rule="evenodd"
+                    d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+              </button>
+              <div class="multiselect-popover multiselect-popover--wide" id="popover-cid" hidden>
+                <div class="popover-search-wrap">
+                  <label class="sr-only" for="search-cid">Buscar capítulo da CID-10</label>
+                  <input
+                    type="search"
+                    id="search-cid"
+                    class="popover-search"
+                    placeholder="Buscar capítulo da CID-10..."
+                    autocomplete="off"
+                  />
+                </div>
+                <div class="popover-actions">
+                  <button type="button" class="link-action" id="btn-cid-todos">Selecionar todos</button>
+                  <span class="sep" aria-hidden="true">·</span>
+                  <button type="button" class="link-action" id="btn-cid-nenhum">Limpar seleção</button>
+                </div>
+                <div class="popover-options" id="options-cid" role="group" aria-label="Capítulos da CID-10"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sexo -->
+          <div class="filter-field">
+            <label class="filter-label" for="filter-sexo">Sexo</label>
+            <select id="filter-sexo" class="select-input">
+              <option value="todos">Todos</option>
+            </select>
+          </div>
+
+          <!-- Ação limpar filtros -->
+          <div class="filter-field filter-field--action">
+            <button id="btn-reset-filters" class="btn btn-secondary" type="button">
+              Limpar filtros
+            </button>
+          </div>
+        </div>
+
+        <div id="loading-indicator" class="loading-bar" aria-live="polite" hidden>
+          <span class="spinner" aria-hidden="true"></span>
+          <span id="loading-text">Carregando dados da UF...</span>
+        </div>
+      </section>
+
+      <!-- Indicadores (KPIs) -->
+      <section id="secao-indicadores" class="kpi-section" aria-label="Indicadores principais">
+        <div class="kpi-grid" id="kpi-grid">
+          <article class="kpi-card">
+            <h2 class="kpi-title">Total de internações</h2>
+            <p class="kpi-value" id="kpi-internacoes">—</p>
+            <p class="kpi-sub">Autorizações de internação</p>
+          </article>
+
+          <article class="kpi-card">
+            <h2 class="kpi-title">Total de óbitos</h2>
+            <p class="kpi-value" id="kpi-obitos">—</p>
+            <p class="kpi-sub">Óbitos hospitalares</p>
+          </article>
+
+          <article class="kpi-card">
+            <h2 class="kpi-title">Taxa de mortalidade</h2>
+            <p class="kpi-value" id="kpi-mortalidade">—</p>
+            <p class="kpi-sub">Óbitos / internações</p>
+          </article>
+
+          <article class="kpi-card">
+            <h2 class="kpi-title">Custo total</h2>
+            <p class="kpi-value" id="kpi-custo-total">—</p>
+            <p class="kpi-sub">Valor aprovado (R$)</p>
+          </article>
+
+          <article class="kpi-card">
+            <h2 class="kpi-title">Custo médio por internação</h2>
+            <p class="kpi-value" id="kpi-custo-medio">—</p>
+            <p class="kpi-sub">Valor total / internações</p>
+          </article>
+
+          <article class="kpi-card">
+            <h2 class="kpi-title">Permanência média</h2>
+            <p class="kpi-value" id="kpi-permanencia">—</p>
+            <p class="kpi-sub">Dias de internação / AIH</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- Estado vazio -->
+      <section id="empty-state" class="empty-state" hidden>
+        <h2 class="empty-title">Nenhum registro encontrado</h2>
+        <p class="empty-desc">
+          A combinação atual de UF, período, capítulo da CID-10 e sexo não retornou internações.
+        </p>
+        <button id="btn-empty-reset" class="btn btn-primary" type="button">
+          Limpar filtros
+        </button>
+      </section>
+
+      <!-- Gráficos -->
+      <section id="charts-section" class="charts-grid" aria-label="Gráficos analíticos">
+        <article id="secao-temporal" class="chart-card chart-card--wide">
+          <header class="chart-header">
+            <div>
+              <h2 class="chart-title">Internações por mês</h2>
+              <p class="chart-subtitle">Série histórica mensal com controle deslizante de período</p>
+            </div>
+          </header>
+          <div id="chart-mensal" class="chart-canvas chart-canvas--tall"></div>
+        </article>
+
+        <article class="chart-card">
+          <header class="chart-header">
+            <div>
+              <h2 class="chart-title">Sazonalidade: ano × mês</h2>
+              <p class="chart-subtitle">Distribuição mensal de internações por ano</p>
+            </div>
+          </header>
+          <div id="chart-heatmap" class="chart-canvas"></div>
+        </article>
+
+        <article id="secao-epidemiologia" class="chart-card">
+          <header class="chart-header">
+            <div>
+              <h2 class="chart-title">Internações por faixa etária e sexo</h2>
+              <p class="chart-subtitle">Comparação demográfica em barras agrupadas</p>
+            </div>
+          </header>
+          <div id="chart-faixa-sexo" class="chart-canvas"></div>
+        </article>
+
+        <article class="chart-card chart-card--wide">
+          <header class="chart-header">
+            <div>
+              <h2 class="chart-title">Internações por capítulo da CID-10</h2>
+              <p class="chart-subtitle">Ranking ordenado por volume total de internações</p>
+            </div>
+          </header>
+          <div id="chart-cid" class="chart-canvas chart-canvas--cid"></div>
+        </article>
+
+        <article class="chart-card">
+          <header class="chart-header">
+            <div>
+              <h2 class="chart-title">Taxa de mortalidade por ano e faixa etária</h2>
+              <p class="chart-subtitle">Proporção de óbitos sobre internações (%)</p>
+            </div>
+          </header>
+          <div id="chart-mortalidade" class="chart-canvas"></div>
+        </article>
+
+        <article id="secao-custos" class="chart-card">
+          <header class="chart-header">
+            <div>
+              <h2 class="chart-title">Custo total e custo médio por ano</h2>
+              <p class="chart-subtitle">Custo total em R$ (barras) e custo médio por internação (linha)</p>
+            </div>
+          </header>
+          <div id="chart-custos" class="chart-canvas"></div>
+        </article>
+      </section>
+
+      <!-- Seção sob demanda: Doenças (CID-10) -->
+      <section id="secao-doencas" class="cid-section" aria-labelledby="cid-section-title">
+        <button
+          type="button"
+          id="btn-toggle-cid-section"
+          class="cid-section-toggle"
+          aria-expanded="false"
+          aria-controls="cid-section-body"
+        >
+          <div class="cid-toggle-heading">
+            <h2 id="cid-section-title" class="cid-section-title">Doenças (CID-10)</h2>
+            <p id="cid-section-subtitle" class="cid-section-subtitle">
+              Detalhamento por categoria CID-10 (3 caracteres) · Clique para carregar sob demanda
+            </p>
+          </div>
+          <span class="cid-toggle-action">
+            <span id="cid-toggle-label">Abrir análise</span>
+            <svg class="chevron-icon cid-chevron" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path
+                fill-rule="evenodd"
+                d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </span>
+        </button>
+
+        <div id="cid-section-body" class="cid-section-body" hidden>
+          <div id="cid-loading-indicator" class="loading-bar loading-bar--inline" aria-live="polite" hidden>
+            <span class="spinner" aria-hidden="true"></span>
+            <span id="cid-loading-text">Carregando dados detalhados de CID-10...</span>
+          </div>
+
+          <div id="cid-error-banner" class="alert alert-error" role="alert" hidden>
+            <span id="cid-error-text">Não foi possível carregar os dados detalhados de CID-10.</span>
+            <button id="btn-cid-retry" class="btn btn-secondary btn-compact" type="button">
+              Tentar novamente
+            </button>
+          </div>
+
+          <div id="cid-controls" class="cid-controls" hidden>
+            <div class="filter-field cid-filter-field">
+              <span class="filter-label" id="label-cid3">Filtrar doenças (código ou nome CID-10)</span>
+              <div class="multiselect" id="ms-cid3">
+                <button
+                  type="button"
+                  class="multiselect-trigger"
+                  id="trigger-cid3"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-labelledby="label-cid3 trigger-cid3"
+                >
+                  <span class="multiselect-text" id="text-cid3">Todas as doenças</span>
+                  <svg class="chevron-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path
+                      fill-rule="evenodd"
+                      d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                </button>
+                <div class="multiselect-popover multiselect-popover--wide" id="popover-cid3" hidden>
+                  <div class="popover-search-wrap">
+                    <label class="sr-only" for="search-cid3">Buscar por código ou nome da doença</label>
+                    <input
+                      type="search"
+                      id="search-cid3"
+                      class="popover-search"
+                      placeholder="Buscar código (ex: I21) ou nome..."
+                      autocomplete="off"
+                    />
+                  </div>
+                  <div class="popover-actions">
+                    <button type="button" class="link-action" id="btn-cid3-todos">Selecionar todas</button>
+                    <span class="sep" aria-hidden="true">·</span>
+                    <button type="button" class="link-action" id="btn-cid3-nenhum">Limpar seleção</button>
+                  </div>
+                  <div class="popover-options" id="options-cid3" role="group" aria-label="Doenças CID-10"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="cid-controls-meta">
+              <p id="cid-scope-info" class="cid-scope-info">
+                Respeitando filtros de UF, período e sexo
+              </p>
+            </div>
+          </div>
+
+          <div id="cid-empty-state" class="empty-state" hidden>
+            <h3 class="empty-title">Nenhuma doença encontrada</h3>
+            <p class="empty-desc">
+              Os filtros atuais de UF, intervalo de anos, sexo e seleção de doenças não retornaram registros.
+            </p>
+            <button id="btn-cid3-reset" class="btn btn-primary" type="button">
+              Selecionar todas as doenças
+            </button>
+          </div>
+
+          <div id="cid-charts-content" class="cid-charts-content" hidden>
+            <div class="charts-grid">
+              <article class="chart-card chart-card--wide">
+                <header class="chart-header chart-header--wrap">
+                  <div>
+                    <h3 id="cid-top-int-title" class="chart-title">Top 20 CID-10 por internações</h3>
+                    <p class="chart-subtitle">Clique em uma barra para detalhar a doença abaixo</p>
+                  </div>
+                  <div class="segmented-control" role="group" aria-label="Quantidade de CIDs no ranking">
+                    <button type="button" class="seg-btn" data-topn="10">Top 10</button>
+                    <button type="button" class="seg-btn is-active" data-topn="20">Top 20</button>
+                    <button type="button" class="seg-btn" data-topn="50">Top 50</button>
+                  </div>
+                </header>
+                <div id="chart-cid3-internacoes" class="chart-canvas chart-canvas--cid-rank"></div>
+              </article>
+
+              <article class="chart-card">
+                <header class="chart-header">
+                  <div>
+                    <h3 class="chart-title">Top 20 CID-10 por taxa de mortalidade</h3>
+                    <p class="chart-subtitle">Apenas doenças com pelo menos 100 internações · clique para detalhar</p>
+                  </div>
+                </header>
+                <div id="cid-mort-empty" class="inline-empty" hidden>
+                  Nenhuma doença atingiu o mínimo de 100 internações nos filtros atuais.
+                </div>
+                <div id="chart-cid3-mortalidade" class="chart-canvas chart-canvas--cid-rank"></div>
+              </article>
+
+              <article class="chart-card">
+                <header class="chart-header">
+                  <div>
+                    <h3 class="chart-title">Top 20 CID-10 por custo total</h3>
+                    <p class="chart-subtitle">Valor total aprovado (R$) · clique para detalhar</p>
+                  </div>
+                </header>
+                <div id="chart-cid3-custo" class="chart-canvas chart-canvas--cid-rank"></div>
+              </article>
+            </div>
+
+            <article id="cid-detalhe-card" class="chart-card cid-detail-card">
+              <header class="chart-header chart-header--wrap">
+                <div>
+                  <h3 class="chart-title">Detalhamento da doença selecionada</h3>
+                  <p id="cid-detail-kpis" class="cid-detail-kpis">—</p>
+                </div>
+                <div class="cid-focus-picker">
+                  <label class="sr-only" for="select-cid-foco">Doença em detalhamento</label>
+                  <select id="select-cid-foco" class="select-input cid-focus-select" aria-label="Doença em detalhamento"></select>
+                </div>
+              </header>
+
+              <div class="cid-detail-grid">
+                <div class="cid-detail-panel">
+                  <h4 class="cid-subchart-title">Internações por ano</h4>
+                  <div id="chart-cid3-det-ano" class="chart-canvas chart-canvas--detail"></div>
+                </div>
+                <div class="cid-detail-panel">
+                  <h4 class="cid-subchart-title">Internações por faixa etária</h4>
+                  <div id="chart-cid3-det-faixa" class="chart-canvas chart-canvas--detail"></div>
+                </div>
+                <div class="cid-detail-panel">
+                  <h4 class="cid-subchart-title">Internações por sexo</h4>
+                  <div id="chart-cid3-det-sexo" class="chart-canvas chart-canvas--detail"></div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container footer-inner">
+        <p id="footer-fonte" class="footer-text">Fonte: SIH/DATASUS</p>
+        <p id="footer-gerado" class="footer-text">Atualizado em: —</p>
+      </div>
+    </footer>
+  </body>
+</html>

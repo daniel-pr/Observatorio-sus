@@ -1,0 +1,56 @@
+{
+  "gerado_em": "2026-11-10T14:30:00-03:00",
+  "fonte": "SIH/DATASUS — Dados fictícios de demonstração (SE)",
+  "ufs": [
+    "SE"
+  ],
+  "anos": [
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "dicionarios": {
+    "cid_capitulo": [
+      "I. Algumas doenças infecciosas e parasitárias",
+      "II. Neoplasias (tumores)",
+      "IV. Doenças endócrinas, nutricionais e metabólicas",
+      "V. Transtornos mentais e comportamentais",
+      "VI. Doenças do sistema nervoso",
+      "IX. Doenças do aparelho circulatório",
+      "X. Doenças do aparelho respiratório",
+      "XI. Doenças do aparelho digestivo",
+      "XIV. Doenças do aparelho geniturinário",
+      "XV. Gravidez, parto e puerpério",
+      "XIX. Lesões, envenenamentos e causas externas",
+      "XXI. Fatores que influenciam o estado de saúde"
+    ],
+    "faixa_etaria": [
+      "<1",
+      "1-4",
+      "5-14",
+      "15-24",
+      "25-39",
+      "40-59",
+      "60-79",
+      "80+"
+    ],
+    "sexo": [
+      "Masculino",
+      "Feminino",
+      "Ignorado"
+    ]
+  },
+  "colunas": [
+    "ano",
+    "mes",
+    "cid_capitulo",
+    "faixa_etaria",
+    "sexo",
+    "internacoes",
+    "obitos",
+    "valor_total",
+    "dias_perm_total"
+  ]
+}
