@@ -1,56 +1,76 @@
 {
-  "gerado_em": "2026-11-10T14:30:00-03:00",
-  "fonte": "SIH/DATASUS — Dados fictícios de demonstração (SE)",
-  "ufs": [
-    "SE"
+ "gerado_em": "2026-11-18T15:21:30+00:00",
+ "fonte": "SIH/SUS (DATASUS)",
+ "ufs": [
+  "SE"
+ ],
+ "anos": [
+  2025
+ ],
+ "dicionarios": {
+  "cid_capitulo": [
+   "I. Infecciosas e parasitárias",
+   "II. Neoplasias",
+   "III. Sangue e imunitários",
+   "IV. Endócrinas e metabólicas",
+   "V. Transtornos mentais",
+   "VI. Sistema nervoso",
+   "VII. Olho",
+   "VIII. Ouvido",
+   "IX. Circulatório",
+   "X. Respiratório",
+   "XI. Digestivo",
+   "XII. Pele",
+   "XIII. Osteomuscular",
+   "XIV. Geniturinário",
+   "XV. Gravidez, parto e puerpério",
+   "XVI. Perinatais",
+   "XVII. Malformações congênitas",
+   "XVIII. Sintomas e sinais",
+   "XIX. Lesões e envenenamentos",
+   "XX. Causas externas",
+   "XXI. Fatores de contato com saúde",
+   "Outros",
+   "Não informado"
   ],
-  "anos": [
-    2021,
-    2022,
-    2023,
-    2024,
-    2025
+  "faixa_etaria": [
+   "<1",
+   "1-4",
+   "5-14",
+   "15-24",
+   "25-39",
+   "40-59",
+   "60-79",
+   "80+"
   ],
-  "dicionarios": {
-    "cid_capitulo": [
-      "I. Algumas doenças infecciosas e parasitárias",
-      "II. Neoplasias (tumores)",
-      "IV. Doenças endócrinas, nutricionais e metabólicas",
-      "V. Transtornos mentais e comportamentais",
-      "VI. Doenças do sistema nervoso",
-      "IX. Doenças do aparelho circulatório",
-      "X. Doenças do aparelho respiratório",
-      "XI. Doenças do aparelho digestivo",
-      "XIV. Doenças do aparelho geniturinário",
-      "XV. Gravidez, parto e puerpério",
-      "XIX. Lesões, envenenamentos e causas externas",
-      "XXI. Fatores que influenciam o estado de saúde"
-    ],
-    "faixa_etaria": [
-      "<1",
-      "1-4",
-      "5-14",
-      "15-24",
-      "25-39",
-      "40-59",
-      "60-79",
-      "80+"
-    ],
-    "sexo": [
-      "Masculino",
-      "Feminino",
-      "Ignorado"
-    ]
-  },
-  "colunas": [
-    "ano",
-    "mes",
-    "cid_capitulo",
-    "faixa_etaria",
-    "sexo",
-    "internacoes",
-    "obitos",
-    "valor_total",
-    "dias_perm_total"
+  "sexo": [
+   "Masculino",
+   "Feminino",
+   "Ignorado"
   ]
+ },
+ "colunas": [
+  "ano",
+  "mes",
+  "cid_capitulo",
+  "faixa_etaria",
+  "sexo",
+  "internacoes",
+  "obitos",
+  "valor_total",
+  "dias_perm_total"
+ ],
+ "detalhe_cid": {
+  "arquivo": "uf/{UF}_cid.json",
+  "colunas": [
+   "ano",
+   "cid3",
+   "faixa_etaria",
+   "sexo",
+   "internacoes",
+   "obitos",
+   "valor_total",
+   "dias_perm_total"
+  ]
+ }
 }
