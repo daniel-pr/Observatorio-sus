@@ -1014,12 +1014,30 @@
       .toLowerCase();
   }
 
-  function formatarLabelCid3(codigo, nome) {
+  function extrairNomeCid3(codigo, nomeBruto) {
+    if (typeof nomeBruto !== "string") return "";
+    let nome = nomeBruto.trim();
+    if (!nome) return "";
+    const cod = String(codigo ?? "").trim();
+    if (cod) {
+      const codEsc = cod.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const rePrefixo = new RegExp(`^${codEsc}(?:\\s*[-–—:]\\s*|\\s+)(.+)$`, "i");
+      const match = nome.match(rePrefixo);
+      if (match) {
+        nome = match[1].trim();
+      } else if (nome.toUpperCase() === cod.toUpperCase()) {
+        return "";
+      }
+    }
+    return nome;
+  }
+
+  function formatarLabelCid3(codigo, nomeBruto) {
     const cod = String(codigo ?? "").trim();
     if (cod.toUpperCase() === "NI") {
       return "Não informado";
     }
-    const nomeLimpo = typeof nome === "string" ? nome.trim() : "";
+    const nomeLimpo = extrairNomeCid3(cod, nomeBruto);
     if (nomeLimpo) {
       return `${cod} – ${nomeLimpo}`;
     }
@@ -1027,37 +1045,7 @@
   }
 
   function criarDadosExemploCidEmMemoria() {
-    const cids = [
-      ["A09", "Diarreia e gastroenterite de origem infecciosa presumível", 1.1, 0.015, 950, 3.4],
-      ["A41", "Outras septicemias", 0.9, 0.24, 4800, 9.8],
-      ["B34", "Doenças por vírus, de localização não especificada", 0.7, 0.012, 1100, 3.8],
-      ["C50", "Neoplasia maligna da mama", 0.85, 0.045, 3600, 4.9],
-      ["C18", "Neoplasia maligna do cólon", 0.65, 0.082, 4200, 7.2],
-      ["C34", "Neoplasia maligna dos brônquios e dos pulmões", 0.55, 0.165, 4100, 8.1],
-      ["D50", "Anemia por deficiência de ferro", 0.5, 0.018, 1250, 4.2],
-      ["E11", "Diabetes mellitus não-insulino-dependente", 1.0, 0.042, 1750, 5.6],
-      ["F20", "Esquizofrenia", 0.6, 0.004, 2100, 16.4],
-      ["G40", "Epilepsia", 0.65, 0.019, 1550, 4.5],
-      ["I10", "Hipertensão essencial (primária)", 1.05, 0.025, 1300, 4.1],
-      ["I21", "Infarto agudo do miocárdio", 1.25, 0.115, 5900, 7.4],
-      ["I50", "Insuficiência cardíaca", 1.35, 0.105, 3400, 7.6],
-      ["I64", "Acidente vascular cerebral, não especificado", 1.2, 0.145, 3900, 8.5],
-      ["J15", "Pneumonia bacteriana não classificada em outra parte", 1.15, 0.078, 2200, 6.4],
-      ["J18", "Pneumonia por microrganismo não especificado", 1.7, 0.084, 2150, 6.1],
-      ["J44", "Outras doenças pulmonares obstrutivas crônicas", 0.95, 0.075, 2400, 6.8],
-      ["J45", "Asma", 0.9, 0.009, 1180, 3.5],
-      ["K35", "Apendicite aguda", 1.1, 0.006, 1850, 3.2],
-      ["K40", "Hérnia inguinal", 0.95, 0.003, 1420, 2.1],
-      ["K80", "Colelitíase", 1.35, 0.009, 1980, 3.1],
-      ["N18", "Insuficiência renal crônica", 0.85, 0.092, 3700, 7.9],
-      ["N39", "Outros transtornos do trato urinário", 1.15, 0.032, 1480, 4.6],
-      ["O80", "Parto único espontâneo", 1.85, 0.001, 1050, 2.2],
-      ["O82", "Parto único por cesariana", 1.6, 0.002, 1380, 2.8],
-      ["S52", "Fratura do antebraço", 0.85, 0.003, 1750, 2.9],
-      ["S72", "Fratura do fêmur", 1.05, 0.055, 4350, 7.8],
-      ["T14", "Traumatismo de região não especificada do corpo", 0.55, 0.022, 1900, 4.0],
-      ["NI", "Não informado", 0.35, 0.03, 1200, 4.1]
-    ];
+    const codigos = ["A09", "I10", "I21", "J18", "K80", "O80", "S72", "NI"];
 
     let seed = 20261116;
     const rand = () => {
@@ -1069,41 +1057,20 @@
     };
 
     const anos = state.index.anos;
-    const faixaMortMult = [1.3, 0.35, 0.2, 0.25, 0.4, 0.85, 1.5, 2.5];
-    const faixaPermMult = [1.25, 0.75, 0.65, 0.7, 0.8, 1.0, 1.25, 1.5];
-
     const colunas = {
       ano: [], cid3: [], faixa_etaria: [], sexo: [],
       internacoes: [], obitos: [], valor_total: [], dias_perm_total: []
     };
 
-    for (let i = 0; i < 820; i++) {
+    for (let i = 0; i < 240; i++) {
       const ano = anos[i % anos.length];
-      const cidIdx = (i * 5 + Math.floor(rand() * cids.length)) % cids.length;
-      const [codigo, _nome, peso, mortBase, custoBase, permBase] = cids[cidIdx];
-
-      let faixa = (i * 3 + Math.floor(rand() * 8)) % 8;
-      let sexo = rand() < 0.015 ? 2 : rand() < 0.52 ? 1 : 0;
-      if (codigo === "O80" || codigo === "O82") {
-        sexo = 1;
-        faixa = rand() < 0.45 ? 3 : 4;
-      } else if (codigo === "C50") {
-        sexo = 1;
-        faixa = rand() < 0.55 ? 5 : 6;
-      } else if (codigo === "S72" || codigo === "I50" || codigo === "I64") {
-        faixa = rand() < 0.5 ? 6 : rand() < 0.7 ? 7 : 5;
-      }
-
-      const anoMult = 1 + (ano - 2021) * 0.04;
-      const sexoMult = sexo === 2 ? 0.12 : 1.0;
-      const internacoes = Math.max(1, Math.round((12 + rand() * 38) * peso * anoMult * sexoMult));
-      const probMort = Math.min(0.45, mortBase * faixaMortMult[faixa] * (0.85 + rand() * 0.35));
-      const obitos = Math.min(internacoes, Math.round(internacoes * probMort));
-      const permMedia = Math.max(1.1, permBase * faixaPermMult[faixa] * (0.85 + rand() * 0.35));
-      const diasPerm = Math.max(internacoes, Math.round(internacoes * permMedia));
-      const inflacao = 1 + (ano - 2021) * 0.055;
-      const custoUnit = custoBase * inflacao * (0.82 + rand() * 0.4);
-      const valorTotal = Number((internacoes * custoUnit).toFixed(2));
+      const cidIdx = (i * 5 + Math.floor(rand() * codigos.length)) % codigos.length;
+      const faixa = (i * 3 + Math.floor(rand() * 8)) % 8;
+      const sexo = rand() < 0.02 ? 2 : rand() < 0.52 ? 1 : 0;
+      const internacoes = Math.max(1, Math.round((15 + rand() * 55) * (sexo === 2 ? 0.15 : 1)));
+      const obitos = Math.min(internacoes, Math.round(internacoes * (0.01 + rand() * 0.12)));
+      const diasPerm = Math.max(internacoes, Math.round(internacoes * (2.5 + rand() * 5)));
+      const valorTotal = Number((internacoes * (1200 + rand() * 2600)).toFixed(2));
 
       colunas.ano.push(ano);
       colunas.cid3.push(cidIdx);
@@ -1116,8 +1083,7 @@
     }
 
     return {
-      dicionario_cid3: cids.map((c) => c[0]),
-      nomes_cid3: cids.map((c) => c[1]),
+      dicionario_cid3: codigos,
       colunas
     };
   }
@@ -1226,12 +1192,13 @@
       for (let i = 0; i < codigos.length; i++) {
         const codigo = String(codigos[i] ?? "").trim();
         if (!codigo) continue;
-        const nome = nomes && typeof nomes[i] === "string" ? nomes[i].trim() : "";
+        const nomeBruto = nomes && typeof nomes[i] === "string" ? nomes[i] : "";
+        const nome = extrairNomeCid3(codigo, nomeBruto);
+        const extraNI = codigo.toUpperCase() === "NI" ? " nao informado não informado" : "";
 
         const existente = mapa.get(codigo);
         if (!existente) {
-          const label = formatarLabelCid3(codigo, nome);
-          const extraNI = codigo.toUpperCase() === "NI" ? " nao informado não informado" : "";
+          const label = formatarLabelCid3(codigo, nomeBruto);
           mapa.set(codigo, {
             codigo,
             nome,
@@ -1240,8 +1207,8 @@
           });
         } else if (!existente.nome && nome) {
           existente.nome = nome;
-          existente.label = formatarLabelCid3(codigo, nome);
-          existente.searchKey = normalizarTexto(`${codigo} ${nome} ${existente.label}`);
+          existente.label = formatarLabelCid3(codigo, nomeBruto);
+          existente.searchKey = normalizarTexto(`${codigo} ${nome} ${existente.label}${extraNI}`);
         }
       }
     }
@@ -1644,12 +1611,14 @@
     });
   }
 
-  function calcularMargemEsquerdaCid(itens, maxChars, maxMargem) {
+  function calcularMargemEsquerdaCid(itens, maxChars, maxMargem, el = null) {
     const maior = itens.reduce(
       (acc, d) => Math.max(acc, truncarTexto(d.label, maxChars).length),
       0
     );
-    return Math.min(maxMargem, Math.max(72, maior * 7.5 + 24));
+    const larguraEl = el && el.clientWidth > 0 ? el.clientWidth : 640;
+    const limiteResponsivo = Math.min(maxMargem, Math.max(96, Math.floor(larguraEl * 0.46)));
+    return Math.min(limiteResponsivo, Math.max(72, maior * 7.2 + 20));
   }
 
   function renderizarSecaoCid() {
@@ -1713,7 +1682,7 @@
           t: 20,
           r: 28,
           b: 48,
-          l: calcularMargemEsquerdaCid(topInt, 42, 290)
+          l: calcularMargemEsquerdaCid(topInt, 42, 290, elInt)
         },
         xaxis: {
           title: { text: "Internações", font: { color: theme.muted } },
@@ -1747,7 +1716,7 @@
             type: "bar",
             orientation: "h",
             x: topMort.map((d) => d.taxa_mortalidade),
-            y: topMort.map((d) => truncarTexto(d.label, 34)),
+            y: topMort.map((d) => truncarTexto(d.label, 36)),
             customdata: topMort.map((d) => [d.codigo, d.label, d.obitos, d.internacoes]),
             marker: { color: theme.palette[4] },
             hovertemplate:
@@ -1762,7 +1731,7 @@
             t: 20,
             r: 24,
             b: 48,
-            l: calcularMargemEsquerdaCid(topMort, 34, 230)
+            l: calcularMargemEsquerdaCid(topMort, 36, 240, els.chartCidMortEl)
           },
           xaxis: {
             title: { text: "Taxa de mortalidade (%)", font: { color: theme.muted } },
@@ -1796,7 +1765,7 @@
           type: "bar",
           orientation: "h",
           x: topCusto.map((d) => d.valor_total),
-          y: topCusto.map((d) => truncarTexto(d.label, 34)),
+          y: topCusto.map((d) => truncarTexto(d.label, 36)),
           customdata: topCusto.map((d) => [d.codigo, d.label, d.internacoes]),
           marker: { color: theme.palette[1] },
           hovertemplate:
@@ -1811,7 +1780,7 @@
           t: 20,
           r: 24,
           b: 48,
-          l: calcularMargemEsquerdaCid(topCusto, 34, 230)
+          l: calcularMargemEsquerdaCid(topCusto, 36, 240, elCusto)
         },
         xaxis: {
           title: { text: "Custo total (R$)", font: { color: theme.muted } },
