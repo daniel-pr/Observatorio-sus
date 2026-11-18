@@ -628,6 +628,7 @@
 
   function baseLayout(theme, extra = {}) {
     return {
+      autosize: true,
       paper_bgcolor: theme.paperBg,
       plot_bgcolor: theme.plotBg,
       font: {
@@ -1467,7 +1468,9 @@
     }
 
     const metaFoco = usarSelecao
-      ? `${listaAgg.length} doenças selecionadas`
+      ? state.selectedCid3.size === state.cidCatalogo.length
+        ? `Todas as doenças (${listaAgg.length})`
+        : `${listaAgg.length} doenças selecionadas`
       : state.cidCatalogoMap.get(codigoFoco)?.label || codigoFoco;
 
     if (totalInt > 0) {
@@ -1479,6 +1482,19 @@
     } else {
       els.cidDetailKpis.textContent = `${metaFoco} · Sem internações no filtro atual.`;
     }
+
+    const detailHeight = 300;
+    const detailChartIds = [
+      "chart-cid3-det-ano",
+      "chart-cid3-det-faixa",
+      "chart-cid3-det-sexo"
+    ];
+    detailChartIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.style.height = `${detailHeight}px`;
+      }
+    });
 
     // 5a. Internações por ano
     window.Plotly.react(
@@ -1493,7 +1509,8 @@
         }
       ],
       baseLayout(theme, {
-        margin: { t: 12, r: 12, b: 40, l: 54 },
+        height: detailHeight,
+        margin: { t: 28, r: 14, b: 44, l: 58 },
         xaxis: { type: "category" },
         yaxis: {
           title: { text: "Internações", font: { color: theme.muted } },
@@ -1518,7 +1535,8 @@
         }
       ],
       baseLayout(theme, {
-        margin: { t: 12, r: 12, b: 44, l: 54 },
+        height: detailHeight,
+        margin: { t: 28, r: 14, b: 48, l: 58 },
         xaxis: { type: "category" },
         yaxis: {
           title: { text: "Internações", font: { color: theme.muted } },
@@ -1545,7 +1563,8 @@
         }
       ],
       baseLayout(theme, {
-        margin: { t: 12, r: 12, b: 40, l: 54 },
+        height: detailHeight,
+        margin: { t: 28, r: 14, b: 44, l: 58 },
         xaxis: { type: "category" },
         yaxis: {
           title: { text: "Internações", font: { color: theme.muted } },
@@ -1556,19 +1575,24 @@
       }),
       PLOTLY_CONFIG
     );
+
+    agendarResizeGraficosCid();
   }
 
   function atualizarSeletorFocoCid(listaPorInt) {
     const totalCatalogo = state.cidCatalogo.length;
-    const isSubconjunto =
-      state.selectedCid3.size > 1 && state.selectedCid3.size < totalCatalogo;
+    const permiteTodas = listaPorInt.length > 1;
+    const todasSelecionadas =
+      totalCatalogo > 0 && state.selectedCid3.size === totalCatalogo;
 
     els.selectCidFoco.innerHTML = "";
 
-    if (isSubconjunto) {
+    if (permiteTodas) {
       const optSel = document.createElement("option");
       optSel.value = "__selecao__";
-      optSel.textContent = `Conjunto selecionado (${state.selectedCid3.size} doenças)`;
+      optSel.textContent = todasSelecionadas
+        ? `Todas as doenças (${listaPorInt.length})`
+        : `Todas selecionadas (${listaPorInt.length} doenças)`;
       els.selectCidFoco.appendChild(optSel);
     }
 
@@ -1580,7 +1604,7 @@
     });
 
     const codigosValidos = new Set(listaPorInt.map((d) => d.codigo));
-    if (isSubconjunto) {
+    if (permiteTodas) {
       if (state.cidFoco !== "__selecao__" && !codigosValidos.has(state.cidFoco)) {
         state.cidFoco = "__selecao__";
       } else if (!state.cidFoco) {
@@ -1593,6 +1617,39 @@
     if (state.cidFoco) {
       els.selectCidFoco.value = state.cidFoco;
     }
+  }
+
+  let cidResizeRaf = 0;
+  function agendarResizeGraficosCid() {
+    if (typeof window.Plotly === "undefined") return;
+    if (cidResizeRaf) {
+      cancelAnimationFrame(cidResizeRaf);
+    }
+    cidResizeRaf = requestAnimationFrame(() => {
+      cidResizeRaf = 0;
+      const ids = [
+        "chart-cid3-internacoes",
+        "chart-cid3-mortalidade",
+        "chart-cid3-custo",
+        "chart-cid3-det-ano",
+        "chart-cid3-det-faixa",
+        "chart-cid3-det-sexo"
+      ];
+      ids.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el && !el.hidden && el.offsetParent !== null && el.data) {
+          window.Plotly.Plots.resize(el);
+        }
+      });
+    });
+  }
+
+  function calcularMargemEsquerdaCid(itens, maxChars, maxMargem) {
+    const maior = itens.reduce(
+      (acc, d) => Math.max(acc, truncarTexto(d.label, maxChars).length),
+      0
+    );
+    return Math.min(maxMargem, Math.max(72, maior * 7.5 + 24));
   }
 
   function renderizarSecaoCid() {
@@ -1630,9 +1687,10 @@
     const topInt = ordenadasInt.slice(0, state.cidTopN).reverse();
     els.cidTopIntTitle.textContent = `Top ${state.cidTopN} CID-10 por internações`;
 
+    const heightInt = Math.max(240, topInt.length * 25 + 96);
     const elInt = document.getElementById("chart-cid3-internacoes");
     if (elInt) {
-      elInt.style.height = `${Math.max(380, topInt.length * 25 + 88)}px`;
+      elInt.style.height = `${heightInt}px`;
     }
 
     window.Plotly.react(
@@ -1650,7 +1708,13 @@
         }
       ],
       baseLayout(theme, {
-        margin: { t: 12, r: 28, b: 44, l: 290 },
+        height: heightInt,
+        margin: {
+          t: 20,
+          r: 28,
+          b: 48,
+          l: calcularMargemEsquerdaCid(topInt, 42, 290)
+        },
         xaxis: {
           title: { text: "Internações", font: { color: theme.muted } },
           gridcolor: theme.grid,
@@ -1674,7 +1738,8 @@
     els.chartCidMortEl.hidden = semMort;
 
     if (!semMort) {
-      els.chartCidMortEl.style.height = `${Math.max(380, topMort.length * 25 + 88)}px`;
+      const heightMort = Math.max(240, topMort.length * 25 + 96);
+      els.chartCidMortEl.style.height = `${heightMort}px`;
       window.Plotly.react(
         "chart-cid3-mortalidade",
         [
@@ -1692,7 +1757,13 @@
           }
         ],
         baseLayout(theme, {
-          margin: { t: 12, r: 24, b: 44, l: 230 },
+          height: heightMort,
+          margin: {
+            t: 20,
+            r: 24,
+            b: 48,
+            l: calcularMargemEsquerdaCid(topMort, 34, 230)
+          },
           xaxis: {
             title: { text: "Taxa de mortalidade (%)", font: { color: theme.muted } },
             gridcolor: theme.grid,
@@ -1712,9 +1783,10 @@
       .slice(0, 20)
       .reverse();
 
+    const heightCusto = Math.max(240, topCusto.length * 25 + 96);
     const elCusto = document.getElementById("chart-cid3-custo");
     if (elCusto) {
-      elCusto.style.height = `${Math.max(380, topCusto.length * 25 + 88)}px`;
+      elCusto.style.height = `${heightCusto}px`;
     }
 
     window.Plotly.react(
@@ -1734,7 +1806,13 @@
         }
       ],
       baseLayout(theme, {
-        margin: { t: 12, r: 24, b: 44, l: 230 },
+        height: heightCusto,
+        margin: {
+          t: 20,
+          r: 24,
+          b: 48,
+          l: calcularMargemEsquerdaCid(topCusto, 34, 230)
+        },
         xaxis: {
           title: { text: "Custo total (R$)", font: { color: theme.muted } },
           gridcolor: theme.grid,
@@ -2069,6 +2147,15 @@
       mediaDark.addEventListener("change", onThemeChange);
     } else if (typeof mediaDark.addListener === "function") {
       mediaDark.addListener(onThemeChange);
+    }
+
+    if (typeof ResizeObserver !== "undefined" && els.cidChartsContent) {
+      const cidObserver = new ResizeObserver(() => {
+        if (state.cidSectionOpen && !els.cidChartsContent.hidden) {
+          agendarResizeGraficosCid();
+        }
+      });
+      cidObserver.observe(els.cidChartsContent);
     }
   }
 
