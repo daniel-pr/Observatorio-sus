@@ -1,10 +1,14 @@
 {
- "gerado_em": "2026-11-18T15:21:30+00:00",
+ "gerado_em": "2026-11-18T22:45:02+00:00",
  "fonte": "SIH/SUS (DATASUS)",
  "ufs": [
-  "SE"
+  "BA",
+  "PR",
+  "SP"
  ],
  "anos": [
+  2023,
+  2024,
   2025
  ],
  "dicionarios": {
